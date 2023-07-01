@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: egs-conv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-deployment
+  template:
+    metadata:
+      labels:
+        app: mysql-deployment
+    spec:
+      containers:
+      - name: mysql-deployment
+        stdin: true
+        tty: true
+        image: mysql/mysql-server:8.0
+        envFrom:
+          - secretRef:
+              name: mysql-secrets
+          - configMapRef:
+              name: mysql-configmap
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 3306
+        volumeMounts: 
+        - name: mysql-db-conf-vol
+          mountPath: /docker-entrypoint-initdb.d/config.sql
+          subPath: config.sql
+
+      volumes:
+      - name: mysql-db-conf-vol
+        configMap:
+          name: mysql-db-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: egs-conv
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+    targetPort: 3306
+  selector:
+    app: mysql-deployment
+---
+# cheat sheet
+# ./access.sh mysql
+# mysql -u root -p
+# show databases;
+# use super_db
+# show tables;
+# select * from users;
+# Press CTRL + D to exit terminal

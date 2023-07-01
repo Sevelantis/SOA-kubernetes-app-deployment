@@ -1,0 +1,70 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: localstack-deployment
+  namespace: egs-conv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: localstack-deployment
+  template:
+    metadata:
+      labels:
+        app: localstack-deployment
+    spec:
+      containers:
+      - name: localstack-deployment
+        stdin: true
+        tty: true
+        image: localstack/localstack-pro:2.0.2
+        command: ["/bin/bash", "-c", "ls -la /opt/code/localstack/.venv/lib/python3.10/site-packages/localstack_ext/aws && /usr/local/bin/docker-entrypoint.sh"]
+        env:
+          - name: EXTERNAL_SERVICE_PORTS_START
+            value: "4510"
+          - name: EXTERNAL_SERVICE_PORTS_END
+            value: "4560"
+          # - name: DOCKER_HOST
+          #   value: unix:///var/run/docker.sock
+          - name: ACTIVATE_PRO
+            value: "1"
+        envFrom:
+          - secretRef:
+              name: localstack-secrets
+          - configMapRef:
+              name: localstack-configmap
+        ports:
+          - containerPort: 4566  # LocalStack Gateway
+          - containerPort: 53  # DNS config (required for Pro)
+          - containerPort: 443  # LocalStack HTTPS Gateway (required for Pro)
+        volumeMounts:
+          - name: ndots-vol
+            mountPath: /etc/resolv.conf
+            subPath: resolv.conf
+      volumes:
+        - name: ndots-vol
+          configMap:
+            name: localstack-ndots-configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: localstack-service
+  namespace: egs-conv
+spec:
+  ports:
+  - name: https-gateway-pro
+    port: 443
+    targetPort: 443
+  - name: localstack-gateway
+    port: 4566
+    targetPort: 4566
+  - name: dns-config-pro
+    port: 53
+    targetPort: 53
+  selector:
+    app: localstack-deployment
+---
+# cheat sheet
+# ./access.sh localstack

@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dummy-deployment
+  namespace: egs-conv
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dummy-deployment
+  template:
+    metadata:
+      labels:
+        app: dummy-deployment
+    spec:
+      containers:
+      - name: dummy-deployment
+        stdin: true
+        tty: true
+        image: rmohr/activemq:5.15.9
+        envFrom:
+          - secretRef:
+              name: activemq-secrets
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dummy-service
+  namespace: egs-conv
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  ports:
+  - name: prometeus
+    port: 9090
+    targetPort: 9090
+  selector:
+    app: dummy-deployment
+---
